@@ -1,0 +1,103 @@
+Metadata-Version: 2.4
+Name: discord-ark-bot
+Version: 0.1.0
+Summary: ARK-enabled Discord voice bot with OpenAI Realtime ASR/TTS
+Author: ARK Bot
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: py-cord>=2.5.0
+Requires-Dist: aiohttp>=3.9
+Requires-Dist: numpy>=1.26
+Requires-Dist: webrtcvad>=2.0.10
+Requires-Dist: PyYAML>=6.0
+Requires-Dist: python-dotenv>=1.0
+Requires-Dist: PyNaCl>=1.5.0
+Requires-Dist: audioop-lts>=0.2.1
+Requires-Dist: av>=12.0.0; platform_system != "Darwin"
+Requires-Dist: pytest>=7.0
+
+# discord-ark-bot
+
+ARK-enabled Discord voice bot that listens in a voice channel, performs VAD, streams transcription to OpenAI Realtime API, routes events, and responds in ARK persona (via Chat/Realtime) with optional TTS playback.
+
+## Features
+- Voice join/leave, per-user audio capture (Opus→PCM), WebRTC VAD
+- Streaming ASR via OpenAI Realtime API (fallback: Whisper HTTP)
+- Router with wake-word, triggers `!ALERT`/`!CRIT`, default silent mode
+- ARK agent persona with campaign configuration and character mapping
+- TTS via OpenAI (fallback local stub), audio playback in voice channel
+- Discord commands: `!join`, `!leave`, `!set-character`, `!ark on/off`, `!ark wakeword`, `!ark test`
+- Logging and short conversation context buffer
+- Tests for router and basic pipeline smoke
+
+## Requirements
+- Python 3.11+
+- FFmpeg installed and in PATH (for audio playback)
+- macOS/Linux
+
+## Quick Start
+
+1) Create a Discord Bot in Developer Portal
+- Go to https://discord.com/developers/applications
+- New Application → Bot → Reset Token, copy
+- Privileged Gateway Intents: enable Message Content Intent; enable Server Members Intent (for mentions and mapping)
+- OAuth2 → URL Generator: scopes `bot`, permissions: `Connect`, `Speak`, `Use Slash Commands`, `Read Message History` (and any others as needed). Invite to your server.
+
+2) OpenAI API Key
+- Create key with Realtime access. Set in `.env` as `OPENAI_API_KEY`.
+
+3) Setup repo
+```
+cd discord-ark-bot
+cp .env.example .env
+python -m venv .venv
+source .venv/bin/activate
+pip install -U pip
+pip install -e .
+```
+
+4) Configure
+- Edit `src/config/campaign.yml` for ARK tone, triggers, rules
+- Edit `src/config/mapping.yml` to map `user_id` to character/persona
+- Update `.env` with Discord and OpenAI tokens
+
+5) Run
+```
+make run
+# or
+python -m src.main
+```
+
+6) In Discord
+- In a text channel: `!join` while connected to a voice channel
+- Bot joins your voice channel and begins VAD+ASR
+- Try wake-word (default: `ARK`) or triggers `!ALERT`, `!CRIT`
+
+## Configuration Files
+- `src/config/campaign.yml`: rules, triggers, ARK tone
+- `src/config/mapping.yml`: mapping from Discord `user_id` to character name or role metadata
+
+## Environment Variables (`.env`)
+See `.env.example` for all keys.
+- `DISCORD_TOKEN`: Discord bot token
+- `OPENAI_API_KEY`: OpenAI API key
+- `OPENAI_REALTIME_MODEL`: Realtime model id (e.g., `gpt-4o-realtime-preview`)
+- `OPENAI_TTS_MODEL`: TTS model id (e.g., `gpt-4o-mini-tts` or `tts-1-hd`)
+- `OPENAI_WHISPER_MODEL`: fallback ASR model (e.g., `whisper-1`)
+
+## Notes on Voice Receive
+This project expects a Discord library that supports voice receive. The code targets `discord.py` 2.x API surface but relies on sink-like behavior commonly available in Py-cord (import name remains `discord`). If your `discord` package lacks recording, either install `py-cord>=2.5` or use the provided lightweight UDP capture in `discord_voice.py` if supported by your environment. See inline comments in `src/discord_voice.py`.
+
+## FAQ
+- Bot joins but no transcription?
+  - Ensure FFmpeg is installed. Confirm Py-cord voice receive (sinks) is available. Check `.env` and model names.
+- Realtime API blocked?
+  - The ASR module falls back to HTTP Whisper if websocket fails, producing final-only segments.
+- TTS fails?
+  - Fallback will reply in text channel; ensure `OPENAI_TTS_MODEL` is valid.
+
+## Testing
+```
+pytest -q
+```
+

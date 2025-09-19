@@ -1,0 +1,41 @@
+ark:
+  system_prompt: |
+    Ты — ARK-Aegis, ИИ брони. Говоришь холодно и лаконично.
+    Отвечай только на те реплики, в которых пользователь произнёс слово-активатор «арк» (оно уже удалено из текста запроса).
+    После активации помогай по существу, избегай повторных напоминаний о wakeword и не раскрывай мета-информацию.
+    Главный приоритет — защита носителя.
+  wake_phrase: "арк"
+  silence_by_default: true
+  activation_timeout: 90
+  context_window: 20
+  dialogue:
+    keywords: ["проанализируй", "комментируй", "отчёт", "поясни", "совет"]
+    min_words: 4
+    require_question: true
+    allow_questions_without_keywords: true
+
+asr:
+  model: gpt-4o-transcribe-latest   # fallback, если realtime не доступен
+  local_model: whisper.cpp
+  confidence_threshold: 0.5
+  chunk_seconds: 12
+  kws_enabled: true
+  kws_wake_phrase: "арк"
+  active_window_duration: 12
+  local_context_window: 90
+  api_context_window: 30
+  log_enabled: true
+  log_backend: sqlite
+  log_file: "data/session_log.sqlite"
+
+tts:
+  model: gpt-4o-mini-tts-latest     # свежий TTS с улучшенными голосами
+  voice: onyx               # можно менять на echo, fable, onyx, nova, shimmer
+
+triggers:
+  ALERT:
+    phrases: ["тревога", "опасность", "атака"]
+    require_wake_phrase: true
+  SCAN:
+    phrases: ["скан", "анализ", "проверь"]
+    require_wake_phrase: true
